@@ -1,0 +1,47 @@
+version: '3.9'
+services:
+
+  monitoring:
+    image: newrelic/php-daemon:${NEWRELIC_VERSION}
+    container_name: monitoring
+    hostname: newrelic.local
+    networks:
+      test_net:
+        ipv4_address: ${net_monitoring_ip}
+
+  app:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+      args:
+        PHP_VERSION: ${PHP_VERSION}
+    image: test-app:dev
+    container_name: app
+    hostname: test-app.local
+    tty: true
+    environment:
+      NEWRELIC_DAEMON_ADDRESS: ${net_monitoring_ip}:${net_monitoring_port}
+    networks:
+      test_net:
+        ipv4_address: ${net_app_ip}
+    volumes:
+    - ./config/php-fpm/:/usr/local/etc/php-fpm.d
+    - ./config/newrelic/newrelic.ini:/usr/local/etc/php/conf.d/newrelic.ini
+
+  proxy:
+    image: nginx:${NGINX_VERSION}
+    container_name: proxy
+    hostname: nginx-proxy.local
+    networks:
+      test_net:
+        ipv4_address: ${net_proxy_ip}
+    volumes:
+    - ./config/nginx/nginx.conf:/etc/nginx/nginx.conf
+
+networks:
+  test_net:
+    driver: bridge
+    ipam:
+      config:
+      - subnet: ${net_subnet}
+        gateway: ${net_gateway}
